@@ -1,0 +1,2 @@
+NAME                  READY   STATUS             RESTARTS        AGE
+fluentd-agent-8zkr5   0/1     CrashLoopBackOff   18 (115s ago)   48m
