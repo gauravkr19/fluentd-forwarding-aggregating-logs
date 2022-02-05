@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    meta.helm.sh/release-name: fluentd-dep
+    meta.helm.sh/release-namespace: logging
+  generation: 1
+  labels:
+    app.kubernetes.io/instance: fluentd-dep
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: fluentd
+    app.kubernetes.io/version: v1.12.4
+    helm.sh/chart: fluentd-0.3.5
+  name: fluentd-dep
+  namespace: logging
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: fluentd-dep
+      app.kubernetes.io/name: fluentd
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 185fae3b96af7c900fa87a05ae616bc0a2bcedeec1648f9dc190f45e6ae5a015
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: fluentd-dep
+        app.kubernetes.io/name: fluentd
+    spec:
+      containers:
+      - env:
+        - name: FLUENTD_CONF
+          value: ../../../etc/fluent/fluent.conf
+        - name: FLUENT_ELASTICSEARCH_HOST
+          value: elasticsearch.elastic-kibana
+        - name: FLUENT_ELASTICSEARCH_PORT
+          value: "9200"
+        image: fluent/fluentd-kubernetes-daemonset:v1.12.4-debian-elasticsearch7-1.0
+        imagePullPolicy: IfNotPresent
+        name: fluentd
+        ports:
+        - containerPort: 24231
+          name: metrics
+          protocol: TCP
+        - containerPort: 24224
+          name: forwarder
+          protocol: TCP
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+        - mountPath: /var/lib/docker/containers
+          name: varlibdockercontainers
+          readOnly: true
+        - mountPath: /etc/fluent
+          name: etcfluentd-main
+        - mountPath: /etc/fluent/config.d/
+          name: etcfluentd-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: fluentd-dep
+      serviceAccountName: fluentd-dep
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /var/log
+          type: ""
+        name: varlog
+      - hostPath:
+          path: /var/lib/docker/containers
+          type: ""
+        name: varlibdockercontainers
+      - configMap:
+          defaultMode: 511
+          name: fluentd-main
+        name: etcfluentd-main
+      - configMap:
+          defaultMode: 511
+          name: fluentd-config
+        name: etcfluentd-config
+
