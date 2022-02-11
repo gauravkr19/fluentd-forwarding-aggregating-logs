@@ -43,16 +43,16 @@ data:
       @type record_transformer
       enable_ruby true
       <record>
-        pod_name ${record["kubernetes"]["pod_name"]}
+        namespace_name ${record["kubernetes"]["namespace_name"]}
       </record>
     </filter>
 
-    # retag based on the namespace and container name of the log message
-    # Update the tag have a structure of <pod_name>    
+    # retag based on the namespace name of the log message
+    # Update the tag have a structure of namespace_name   
     <match kubernetes.**>
       @type rewrite_tag_filter
       <rule> 
-        key $.pod_name
+        key $.namespace_name
         pattern ^(.+)$ 
         tag $1
       </rule>
@@ -61,21 +61,21 @@ data:
     # Remove the unnecessary field as the information is already available on other fields.
     <filter kube-**>
       @type record_transformer
-      remove_keys $.pod_name
+      remove_keys $.namespace_name
     </filter>
 
-    # Parse logs of core kube- components(pods) using the kubernetes formatter.
-    <filter kube-**>
-      @type parser
-      format kubernetes
-      reserve_data true
-      key_name message
-      suppress_parse_error_log true
-    </filter>
+    # # Parse logs of core kube- components(pods) using the kubernetes formatter.
+    # <filter kube-**>
+    #   @type parser
+    #   format kubernetes
+    #   reserve_data true
+    #   key_name message
+    #   suppress_parse_error_log true
+    # </filter>
         
     
   04_outputs.conf: |-
-    <match **>
+    <match {elastic-kibana,app1,bookinfo}>
       @type forward
       <server>
         # Aggregator host

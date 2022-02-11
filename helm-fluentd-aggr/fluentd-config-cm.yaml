@@ -5,10 +5,10 @@ data:
     <source>
       @type forward
       port 24224
-      tag aggr.log
+      allapps.log
     </source>
 
-    <filter aggr.**>
+    <filter allapps**>
       @type record_transformer
       enable_ruby true
       <record>
@@ -16,7 +16,7 @@ data:
       </record>
     </filter>   
 
-    <match aggr.**>
+    <match allapps**>
       @type rewrite_tag_filter
       <rule> 
         key $.namespace_pod_name
@@ -25,34 +25,65 @@ data:
       </rule>
     </match>
 
-    <filter **etcd-** **elastic** **kibana** **calico-**>
+    <filter elastic-kibana** app1**>
       @type record_transformer
       remove_keys $.namespace_pod_name
     </filter>
 
-    # parse JSON logs from etcd, elastic and kibana pods
-    <filter **etcd-** **elastic** **kibana**>
+    # parse JSON logs from elastic-kibana namespace
+    <filter elastic-kibana**>
       @type parser
       reserve_data true
-      key_name "$.message"
-      suppress_parse_error_log true      
+      key_name "$.message"    
       <parse>
         @type json
       </parse>
     </filter>
 
-    # Parse Non-JSON logs for calico pods in the kube-system namespace
-    <filter **calico-**>
+    # parse logs from app1 namespace
+    <filter app1**>
       @type parser
-      key_name "$.message"
       reserve_data true
-      suppress_parse_error_log true
+      key_name "$.message"    
       <parse>
-        @type regexp
-        expression ^(?<ts>[^ ]* [^ ]*)\s+\[(?<SEV>\w+)\]\[\d+\]\s+(?<Go-Module>[^ ]*)(?<message>.*)$
+        @type apache2
       </parse>
-    </filter>  
-    
+    </filter>
+
+    <match bookinfo.productpage**>
+      @type file
+      path /var/log/fluent/productpage.${tag}.%Y%m%d
+      compress gzip
+      <buffer>
+        timekey 3600
+        timekey_use_utc true
+        timekey_wait 10m
+     </buffer>
+    </match>
+
+    <source>
+      @type tail
+      @id productpage_logs
+      path /var/log/fluent/productpage*.log
+      pos_file /var/log/fluentd-productpage.log.pos
+      multiline_flush_interval 5s
+      tag bookinfo.productpage**
+      read_from_head true
+      <parse>
+        @type multiline
+        format_firstline /^send:/
+        format1 /^(?<send>.*)$\n/
+        format2 /^(?<reply>.*)$\n/
+        format3 /^(?<header1>.*)$\n/
+        format4 /^(?<header2>.*)$\n/
+        format5 /^(?<header3>.*)$\n/
+        format6 /^(?<header4>.*)$\n/
+        format7 /^(?<header5>.*)$\n/
+        format8 /\w+(?=:)\n/
+        format9 /\w+(?=:)/			
+      </parse>    
+    </source>
+
   04_outputs.conf: |-
       <match **>
         @type elasticsearch
